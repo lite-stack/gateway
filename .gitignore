@@ -1,0 +1,59 @@
+# PyCharm
+.idea
+
+# Environments
+.env
+.venv
+env/
+venv
+ENV/
+env.bak/
+venv.bak/
+
+# FastAPI stuff:
+
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Logs
+*.log
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# IPython
+profile_default/
+ipython_config.py
+
+# C extensions
+*.so
+
+# Pyre type checker
+.pyre/
+
+# pytype static type analyzer
+.pytype/
+
+# Cython debug symbols
+cython_debug/
+
+# Testing stuff
+.pytest_cache
+htmlcov
+assets
+.coverage
+coverage.html
+report.html
+tests/report.html
+tests/coverage/*
+
+# OS stuff
+.DS_Store
+
+# Project stuff
+mysql_data
+postgres_data

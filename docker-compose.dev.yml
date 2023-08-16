@@ -1,0 +1,18 @@
+version: '3.8'
+services:
+
+  db:
+    container_name: postgresql
+    image: postgres
+    restart: always
+    ports:
+      - '5432:5432'
+    environment:
+      - DB_HOST=${DB_HOST}
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=${DB_SCHEMA}
+    volumes:
+      - ./postgres_data:/var/lib/postgresql/data
+      - ./app/db/sql/creates.postgres:/docker-entrypoint-initdb.d/create_tables.sql
+      - ./app/db/sql/inserts.postgres:/docker-entrypoint-initdb.d/fill_tables.sql
