@@ -43,6 +43,8 @@ class Settings(BaseSettings):
 
     secret_key: str = 'str'
 
+    cloud_name: str = 'name'
+
     class Config:
         env_file = '.env'
 

@@ -1,4 +1,3 @@
-
 # Gateway for Openstack
 
 ## To run a local environment
@@ -60,7 +59,7 @@ For Windows:
 5. Run Postgres inside a docker container
 
  ```console
- docker-compose up -f docker-compose.dev.yml -d db
+ docker-compose -f docker-compose.dev.yml up -d db
  ```
 
 6. Install Alembic (a tool for migrations for the database) and apply migrations.
@@ -129,7 +128,9 @@ To run precommit manually:
 ```console
 pre-commit run --all-files
 ```
+
 ## Project structure
+
 ```
 gateway
 ├── app
@@ -155,10 +156,42 @@ gateway
 ├── run.py # application runner
 ├── requirements.txt
 ```
-When you will implement your module, all your stuff must be added to your own folder to `app/<module_name>`. Do not touch modules of other participants!
+
+When you will implement your module, all your stuff must be added to your own folder to `app/<module_name>`. Do not
+touch modules of other participants!
 
 ## Useful links
 
-1. [Fast API course](https://www.youtube.com/playlist?list=PLeLN0qH0-mCVQKZ8-W1LhxDcVlWtTALCS " Fast API course") **SEE FULL!**
+1. [Fast API course](https://www.youtube.com/playlist?list=PLeLN0qH0-mCVQKZ8-W1LhxDcVlWtTALCS " Fast API course") **SEE
+   FULL!**
 2. [Fast API docs](https://fastapi.tiangolo.com/)
 3. [Fast API Users docs](https://fastapi-users.github.io/fastapi-users/12.1/)
+
+## DevStack
+
+You need to install DevStack locally to be available to develop the modules.
+Install [VM Virtual box](https://www.virtualbox.org/wiki/Downloads), set up
+the [Ubuntu server machine](https://releases.ubuntu.com/22.04/) (download **Server install image**) and install all
+required stuff for DevStack. Use these links for more information:
+
+1. [DevStack setup article](https://medium.com/@ollste/openstack-local-development-how-to-install-test-and-use-openstack-in-virtualbox-b60b667886c4)
+2. [Video with DevStack setup](https://www.youtube.com/watch?v=gAH8jiW8j74)
+
+### Tips
+
+1. While creating `local.conf` file, add this to the file:
+
+```console
+[[local|localrc]]
+ADMIN_PASSWORD=openstack
+DATABASE_PASSWORD=openstack
+RABBIT_PASSWORD=openstack
+SERVICE_PASSWORD=openstack
+HOST_IP=<192.168.56.XXX>
+SERVICE_TIMEOUT=180
+```
+
+2. Instead of `<192.168.56.XXX> ` at the file `local.conf` add your IP address. To do that, write in the VM `ip addr`,
+   find and use your ip with the prefix of `192.168.56.`.
+3. Name all users and set all passwords as `openstack`.
+4. Update `clouds.yml` file with your IP address, start the app and try to call `/servers/list` from the doc.

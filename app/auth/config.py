@@ -7,9 +7,11 @@ from app.config import settings
 
 cookie_transport = CookieTransport(cookie_max_age=3600, cookie_name='openstack-user')
 
+
 def get_jwt_strategy() -> JWTStrategy:
     print(settings.secret_key)
     return JWTStrategy(secret=settings.secret_key, lifetime_seconds=3600)
+
 
 auth_backend = AuthenticationBackend(
     name="jwt",
