@@ -1,6 +1,7 @@
 import os
-from pydantic_settings import BaseSettings
 from logging import DEBUG, getLogger, basicConfig, FileHandler, Formatter, Logger
+
+from pydantic_settings import BaseSettings
 
 base_dir = os.path.dirname(os.path.abspath(__file__))
 
@@ -44,6 +45,13 @@ class Settings(BaseSettings):
     secret_key: str = 'str'
 
     cloud_name: str = 'name'
+
+    mail_username: str = 'username'
+    mail_password: str = 'password'
+    mail_port: int = 587
+    mail_server: str = 'server'
+    mail_from: str = 'from@test.com'
+    mail_from_name: str = 'from_name'
 
     class Config:
         env_file = '.env'

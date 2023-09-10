@@ -1,12 +1,11 @@
 from fastapi import FastAPI, Depends
-from app.auth.config import fastapi_users
 
 from app.auth.config import auth_backend
+from app.auth.config import fastapi_users
 from app.auth.schemas import UserRead, UserCreate, UserUpdate
-from config import APP_CONFIG, Settings
 from app.dependencies import get_settings
-
 from app.servers.router import router as servers_router
+from config import APP_CONFIG, Settings
 
 app = FastAPI(**APP_CONFIG)
 

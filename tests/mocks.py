@@ -1,5 +1,4 @@
 from dotmap import DotMap
-from app.database import get
 from fastapi import Depends
 
 _mocks: dict = {

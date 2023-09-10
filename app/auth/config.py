@@ -9,7 +9,6 @@ cookie_transport = CookieTransport(cookie_max_age=3600, cookie_name='openstack-u
 
 
 def get_jwt_strategy() -> JWTStrategy:
-    print(settings.secret_key)
     return JWTStrategy(secret=settings.secret_key, lifetime_seconds=3600)
 
 

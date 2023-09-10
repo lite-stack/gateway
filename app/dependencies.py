@@ -1,13 +1,12 @@
-from fastapi import Header, HTTPException
 from functools import lru_cache
-
-from app.openstack.config import get_connection
-from config import Settings
-
-from sqlalchemy.ext.asyncio import AsyncSession
 from typing import AsyncGenerator
 
+from fastapi import Header, HTTPException
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.database import async_session_maker
+from app.openstack.config import get_connection
+from config import Settings
 
 
 @lru_cache()

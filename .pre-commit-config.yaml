@@ -1,44 +1,44 @@
 repos:
-    # Linting check
-    - repo: local
-      hooks:
+  # Linting check
+  - repo: local
+    hooks:
       - id: pylint-check
         name: pylint-check
         entry: pylint *
         language: python
-        types: [python]
-        additional_dependencies: [pylint]
+        types: [ python ]
+        additional_dependencies: [ pylint ]
         args:
-        - --disable=C0114,C0116,C0115,E0401,E0611
-        - --max-line-length=100
-        - -d duplicate-code
+          - --disable=C0114,C0116,C0115,E0401,E0611
+          - --max-line-length=100
+          - -d duplicate-code
 
-     # Testing check
-    - repo: local
-      hooks:
+  # Testing check
+  - repo: local
+    hooks:
       - id: pytest-check
         name: pytest-check
         stages: [ commit ]
         types: [ python ]
         entry: pytest
-        args: ["-v", "tests/"]
+        args: [ "-v", "tests/" ]
         language: system
         pass_filenames: false
         always_run: true
 
-    # Common & General checks
-    - repo: https://github.com/pre-commit/pre-commit-hooks
-      rev: v4.4.0
-      hooks:
+  # Common & General checks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
+    hooks:
       - id: trailing-whitespace
       - id: end-of-file-fixer
       - id: check-yaml
       - id: check-added-large-files
 
-    # Conventional commit check
-    - repo: https://github.com/compilerla/conventional-pre-commit
-      rev: v2.3.0
-      hooks:
+  # Conventional commit check
+  - repo: https://github.com/compilerla/conventional-pre-commit
+    rev: v2.3.0
+    hooks:
       - id: conventional-pre-commit
         stages: [ commit-msg ]
         args: [ ] # optional: list of Conventional Commits types to allow
