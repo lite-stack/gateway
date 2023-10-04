@@ -53,6 +53,8 @@ class Settings(BaseSettings):
     mail_from: str = 'from@test.com'
     mail_from_name: str = 'from_name'
 
+    max_server_limit: int = '10'
+
     class Config:
         env_file = '.env'
 

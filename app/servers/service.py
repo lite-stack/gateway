@@ -40,10 +40,10 @@ async def send_keypair_email(
 
     if not ip_v4_public:
         return
-
+    print(public_file_path)
     await send_email(
         background_tasks,
-        "LiteStack: your private ssg key",
+        "LiteStack: your private ssh key",
         user.email,
         {'public_address': ip_v4_public},
         [
@@ -63,6 +63,15 @@ async def send_keypair_email(
                 "mime_type": "text",
                 "mime_subtype": "plain",
             },
+            {
+                "file": "./templates/logo.png",
+                "headers": {
+                    "Content-ID": "<logo_image@fastapi-mail>",
+                    "Content-Disposition": "inline; filename=\"file.png\"",  # For inline images only
+                },
+                "mime_type": "image",
+                "mime_subtype": "png",
+            }
         ],
         "ssh_email.html",
     )

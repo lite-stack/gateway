@@ -10,6 +10,7 @@ import app.openstack.network_service as openstack_network
 import app.servers.db_service as db
 from app.auth.config import fastapi_users
 from app.auth.models import User
+from app.config import settings
 from app.dependencies import get_openstack_connection, get_async_session
 from app.servers.schemas import (
     Flavor as FlavorSchema,
@@ -33,53 +34,30 @@ router = APIRouter(
 @router.get("/configurations", response_model=list[ServerConfiguration])
 async def get_server_configurations(
         _: User = Depends(current_user),
-        session: AsyncSession = Depends(get_async_session)
+        session: AsyncSession = Depends(get_async_session),
+        conn: connection.Connection = Depends(get_openstack_connection),
+
 ):
+    # for flavor in conn.compute.flavors():
+    #     print(flavor)
+    #
+    # for image in conn.compute.images():
+    #     print(image)
+    #
+    # for network in conn.network.networks():
+    #     print(network)
     try:
         server_configurations = await db.get_server_configurations(session)
+        server_configurations.sort(key=lambda item: item.name)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to list server configurations: {e}")
 
     return server_configurations
 
 
-@router.get("/flavors")
-async def get_flavors(
-        _: User = Depends(current_user),
-        conn: connection.Connection = Depends(get_openstack_connection),
-):
-    try:
-        flavors = openstack.get_flavors(conn)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to list flavors: {e}")
-
-    return [FlavorSchema.create_from_openstack(flavor) for flavor in flavors]
-
-
-@router.get("/images")
-async def get_images(
-        _: User = Depends(current_user),
-        conn: connection.Connection = Depends(get_openstack_connection),
-):
-    try:
-        images = openstack.get_images(conn)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to list images: {e}")
-
-    return [ImageSchema.create_from_openstack(image) for image in images]
-
-
-@router.get("/networks")
-async def get_networks(
-        _: User = Depends(current_user),
-        conn: connection.Connection = Depends(get_openstack_connection),
-):
-    try:
-        networks = openstack_network.get_networks(conn)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to list networks: {e}")
-
-    return [NetworkSchema.create_from_openstack(network) for network in networks]
+@router.get("/limit")
+async def get_server_limit():
+    return {'limit': settings.max_server_limit}
 
 
 @router.get("", response_model=list[ServerSchema])
@@ -134,12 +112,13 @@ async def create_user_server(
 ):
     try:
         server_ids = await db.get_user_server_ids(user, session)
-        if len(server_ids) > 10:
+        if len(server_ids) > settings.max_server_limit:
             raise HTTPException(status_code=409, detail="Too many servers")
 
         server_config = await db.get_server_configuration(req.configuration_name, session)
 
-        openstack_server, key_pair = openstack.create_server(conn, str(user.id), server_config)
+        openstack_server, key_pair = openstack.create_server(conn, str(user.id), req.name, req.description,
+                                                             server_config)
         if key_pair.private_key:
             await send_keypair_email(background_tasks, user, key_pair, openstack_server)
 

@@ -151,7 +151,6 @@ class ServerDetailed(Server):
 
     metadata: str
     full_info: str
-    private_key: Optional[str] = None
 
     @classmethod
     def create_from_openstack_server(
@@ -161,6 +160,7 @@ class ServerDetailed(Server):
             openstack_image: Optional[OpenStackImage] = None,
     ) -> 'ServerDetailed':
         server = Server.create_from_openstack_server(user_id, openstack_server)
+        image = None
         if openstack_image:
             image = Image.create_from_openstack(image=openstack_image)
 
@@ -198,6 +198,8 @@ class ServerStateActionUpdate(BaseModel):
 
 
 class ServeCreate(BaseModel):
+    name: str
+    description: str
     configuration_name: str
 
 

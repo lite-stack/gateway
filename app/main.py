@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Depends
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.auth.config import auth_backend
 from app.auth.config import fastapi_users
@@ -8,6 +9,14 @@ from app.servers.router import router as servers_router
 from config import APP_CONFIG, Settings
 
 app = FastAPI(**APP_CONFIG)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_credentials=True,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 app.include_router(
     fastapi_users.get_auth_router(auth_backend),

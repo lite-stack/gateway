@@ -9,7 +9,9 @@ from app.servers.models import ServerConfig
 
 def create_server(
         conn: connection.Connection,
+        user_id: str,
         name: str,
+        description: str,
         server_config: ServerConfig,
 ) -> (OpenStackServer, OpenStackKeypair):
     image = conn.image.find_image(server_config.image)
@@ -20,10 +22,11 @@ def create_server(
         openstack_network = conn.network.find_network(network)
         networks.append({"uuid": openstack_network.id})
 
-    keypair = create_keypair(conn, name)
+    keypair = create_keypair(conn, user_id)
 
     server = conn.compute.create_server(
         name=name,
+        description=description,
         admin_password=name,
         image_id=image.id,
         flavor_id=flavor.id,
