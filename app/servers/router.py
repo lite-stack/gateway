@@ -6,17 +6,13 @@ from openstack.exceptions import ConflictException, ResourceNotFound, DuplicateR
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import app.openstack.compute_service as openstack
-import app.openstack.network_service as openstack_network
 import app.servers.db_service as db
 from app.auth.config import fastapi_users
 from app.auth.models import User
 from app.config import settings
 from app.dependencies import get_openstack_connection, get_async_session
 from app.servers.schemas import (
-    Flavor as FlavorSchema,
-    Image as ImageSchema,
     Server as ServerSchema,
-    Network as NetworkSchema,
     ServerDetailed as ServerDetailedSchema,
     ServerStateActionUpdate,
     ServerStateActionEnum, ServerConfiguration, ServeCreate, ServeUpdate

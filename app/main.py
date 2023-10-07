@@ -7,6 +7,7 @@ from app.auth.schemas import UserRead, UserCreate, UserUpdate
 from app.dependencies import get_settings
 from app.servers.router import router as servers_router
 from config import APP_CONFIG, Settings
+from app.auth.router import router as user_router
 
 app = FastAPI(**APP_CONFIG)
 
@@ -31,7 +32,7 @@ app.include_router(
 )
 
 app.include_router(
-    fastapi_users.get_users_router(UserRead, UserUpdate),
+    user_router,
     prefix="/users",
     tags=["users"],
 )
