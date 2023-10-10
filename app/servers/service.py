@@ -40,7 +40,7 @@ async def send_keypair_email(
 
     if not ip_v4_public:
         return
-    print(public_file_path)
+
     await send_email(
         background_tasks,
         "LiteStack: your private ssh key",

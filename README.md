@@ -22,16 +22,27 @@ This template can be run it on your local machine. In order to do that you need:
 2. Create <b><i>.env</i></b> file with the environment variables in the project root
 
   ```dosini
-  DB_ENGINE=postgres
-  DB_PORT=5432
-  
-  DB_HOST=localhost
-  DB_SCHEMA=openstack
-  DB_USER=postgres
-  DB_PASSWORD=postgres
-    
-  SECRET_KEY=authkey
-  ```
+DB_ENGINE=postgres
+DB_PORT=5432
+
+DB_HOST=localhost
+DB_SCHEMA=openstack
+DB_USER=postgres
+DB_PASSWORD=postgres
+
+SECRET_KEY=authkey
+
+CLOUD_NAME=local
+
+MAIL_SERVER=smtp.gmail.com
+MAIL_PORT=587
+MAIL_USERNAME=<your email client>
+MAIL_PASSWORD=<your password>
+MAIL_FROM=info@litestack.com
+MAIL_FROM_NAME=LiteStack
+
+MAX_SERVER_LIMIT=15
+```
 
 3. Upgrade your pip manager
 

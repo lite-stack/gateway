@@ -31,17 +31,7 @@ router = APIRouter(
 async def get_server_configurations(
         _: User = Depends(current_user),
         session: AsyncSession = Depends(get_async_session),
-        conn: connection.Connection = Depends(get_openstack_connection),
-
 ):
-    # for flavor in conn.compute.flavors():
-    #     print(flavor)
-    #
-    # for image in conn.compute.images():
-    #     print(image)
-    #
-    # for network in conn.network.networks():
-    #     print(network)
     try:
         server_configurations = await db.get_server_configurations(session)
         server_configurations.sort(key=lambda item: item.name)
@@ -115,7 +105,7 @@ async def create_user_server(
 
         openstack_server, key_pair = openstack.create_server(conn, str(user.id), req.name, req.description,
                                                              server_config)
-        if key_pair.private_key:
+        if key_pair.private_key and settings.mail_username != "":
             await send_keypair_email(background_tasks, user, key_pair, openstack_server)
 
         await db.insert_user_server(openstack_server.id, user.id, session)
