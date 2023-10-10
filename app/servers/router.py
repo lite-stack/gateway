@@ -187,6 +187,6 @@ async def set_state_action(
     except ResourceNotFound as e:
         raise HTTPException(status_code=404, detail=str(e))
     except ConflictException as e:
-        raise HTTPException(status_code=409, detail=str(e))
+        raise HTTPException(status_code=409, detail='Invalid status')
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to set server state: {e}")
