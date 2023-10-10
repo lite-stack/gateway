@@ -16,7 +16,7 @@ This template can be run it on your local machine. In order to do that you need:
 1. Clone this repo
 
   ```console
-  git clone https://gitlab.com/juanesquintero/fastapi-template.git
+  git clone <this repo link>
  ```
 
 2. Create <b><i>.env</i></b> file with the environment variables in the project root
