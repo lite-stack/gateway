@@ -3,6 +3,7 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from openstack import connection
 from openstack.exceptions import ConflictException, ResourceNotFound, DuplicateResource
+from openstack.exceptions import  HttpException as OpenstackHTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import app.openstack.compute_service as openstack
@@ -18,7 +19,7 @@ from app.servers.schemas import (
     ServerStateActionEnum, ServerConfiguration, ServeCreate, ServeUpdate
 )
 from app.servers.service import send_keypair_email
-
+from app.openstack.models import get_os_default_user
 current_user = fastapi_users.current_user()
 
 router = APIRouter(
@@ -42,8 +43,11 @@ async def get_server_configurations(
 
 
 @router.get("/limit")
-async def get_server_limit():
-    return {'limit': settings.max_server_limit}
+async def get_server_limit(
+        conn: connection.Connection = Depends(get_openstack_connection),
+        _: User = Depends(current_user),
+):
+    return {'limit': openstack.get_instance_limit(conn)}
 
 
 @router.get("", response_model=list[ServerSchema])
@@ -54,10 +58,13 @@ async def get_user_servers_list(
 ):
     try:
         if user.is_superuser:
-            servers = openstack.get_all_servers(conn)
+            server_ids = await db.get_all_servers_ids(session)
         else:
             server_ids = await db.get_user_server_ids(user, session)
-            servers = openstack.get_servers_by_ids(conn, server_ids)
+
+        if len(server_ids) == 0:
+            return []
+        servers = openstack.get_servers_by_ids(conn, server_ids)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to list server: {e}")
 
@@ -71,10 +78,9 @@ async def get_user_server(
         conn: connection.Connection = Depends(get_openstack_connection),
         session: AsyncSession = Depends(get_async_session)
 ):
+    if not await db.is_user_server(server_id, user, session):
+        raise HTTPException(status_code=404, detail="Server not found")
     try:
-        if not await db.is_user_server(server_id, user, session):
-            raise HTTPException(status_code=404, detail="Server not found")
-
         openstack_server = openstack.get_server(conn, str(server_id))
         if openstack_server.image.id:
             image = openstack.get_image(conn, openstack_server.image.id)
@@ -82,11 +88,34 @@ async def get_user_server(
         raise HTTPException(status_code=404, detail=f"Server not found")
     except DuplicateResource:
         raise HTTPException(status_code=409, detail=f"Multiple servers found with ID {server_id}")
+    except OpenstackHTTPException as e:
+        raise HTTPException(status_code=e.status_code, detail=e.details)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get server: {e}")
 
     return ServerDetailedSchema.create_from_openstack_server(user.id, openstack_server, image)
 
+@router.get("/{server_id}/console-url")
+async def get_user_server_console_url(
+        server_id: uuid.UUID,
+        user: User = Depends(current_user),
+        conn: connection.Connection = Depends(get_openstack_connection),
+        session: AsyncSession = Depends(get_async_session)
+):
+    if not await db.is_user_server(server_id, user, session):
+        raise HTTPException(status_code=404, detail="Server not found")
+    try:
+        console = openstack.create_server_console(conn, str(server_id))
+    except ResourceNotFound:
+        raise HTTPException(status_code=404, detail=f"Server not found")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to create server console: {e}")
+
+    url = console.get('url', '')
+    if url == '':
+        raise HTTPException(status_code=500, detail=f"Failed to create server console: no url")
+
+    return {'url': url}
 
 @router.post("/from_configuration", response_model=ServerDetailedSchema)
 async def create_user_server(
@@ -98,15 +127,22 @@ async def create_user_server(
 ):
     try:
         server_ids = await db.get_user_server_ids(user, session)
-        if len(server_ids) > settings.max_server_limit:
+        if len(server_ids) > openstack.get_instance_limit(conn):
             raise HTTPException(status_code=409, detail="Too many servers")
 
         server_config = await db.get_server_configuration(req.configuration_name, session)
 
-        openstack_server, key_pair = openstack.create_server(conn, str(user.id), req.name, req.description,
-                                                             server_config)
-        if key_pair.private_key and settings.mail_username != "":
-            await send_keypair_email(background_tasks, user, key_pair, openstack_server)
+        openstack_server, key_pair, floating_ip = openstack.create_server(
+            conn,
+            str(user.id),
+            req.name,
+            req.description,
+            server_config,
+        )
+
+        public_ip_address = floating_ip.floating_ip_address
+        if key_pair.private_key and settings.mail_username != "" and public_ip_address != "":
+            await send_keypair_email(background_tasks, user, key_pair, public_ip_address, get_os_default_user(server_config.image))
 
         await db.insert_user_server(openstack_server.id, user.id, session)
     except ResourceNotFound as e:

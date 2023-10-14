@@ -106,13 +106,20 @@ class Server(BaseModel):
         ip_v4_private = ""
         ip_v6_private = ""
 
-        for public_address in openstack_server.addresses.get('public', dict()):
+        for public_address in openstack_server.addresses.get('private', dict()):
             version = public_address.get('version', None)
             addr = public_address.get('addr', None)
+            address_type = public_address.get('OS-EXT-IPS:type', '')
             if version == 4:
-                ip_v4_public = addr
+                if address_type == 'fixed':
+                    ip_v4_private = addr
+                elif address_type == 'floating':
+                    ip_v4_public = addr
             elif version == 6:
-                ip_v6_public = addr
+                if address_type == 'fixed':
+                    ip_v6_private= addr
+                elif address_type == 'floating':
+                    ip_v6_public = addr
 
         for private_address in openstack_server.addresses.get('shared', dict()):
             version = private_address.get('version', None)

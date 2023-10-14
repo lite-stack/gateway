@@ -31,6 +31,12 @@ async def get_user_server_ids(
 
     return [server[0].openstack_id for server in result.all()]
 
+async def get_all_servers_ids(
+        session: AsyncSession,
+) -> list:
+    result = await session.execute(select(Server))
+
+    return [server[0].openstack_id for server in result.all()]
 
 async def insert_user_server(
         server_id: uuid.UUID,

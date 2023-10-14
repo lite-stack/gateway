@@ -3,6 +3,6 @@ clouds:
     auth:
       username: "admin"
       password: openstack
-      project_name: "admin"
-      auth_url: "http://192.168.56.8/identity/" #CHANGE YOUR IP
+      project_name: "demo"
+      auth_url: "http://192.168.56.13/identity/" #CHANGE YOUR IP
       domain_name: "Default"

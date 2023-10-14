@@ -26,26 +26,23 @@ async def send_keypair_email(
         background_tasks: BackgroundTasks,
         user: User,
         key_pair: OpenStackKeypair,
-        server: OpenStackServer,
+        ip_address: str,
+        default_user: str,
 ):
+    if not ip_address:
+        return
+
     private_file_path = generate_file(f'./temp/{user.id}_devstask', key_pair.private_key)
     public_file_path = generate_file(f'./temp/{user.id}_devstask.pub', key_pair.public_key)
-
-    ip_v4_public = ''
-    for public_address in server.addresses.get('public', dict()):
-        version = public_address.get('version', None)
-        addr = public_address.get('addr', None)
-        if version == 4:
-            ip_v4_public = addr
-
-    if not ip_v4_public:
-        return
 
     await send_email(
         background_tasks,
         "LiteStack: your private ssh key",
         user.email,
-        {'public_address': ip_v4_public},
+        {
+            'public_address': ip_address,
+            'default_user': default_user,
+        },
         [
             {
                 "file": private_file_path,
