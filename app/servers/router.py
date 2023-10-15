@@ -81,6 +81,7 @@ async def get_user_server(
     if not await db.is_user_server(server_id, user, session):
         raise HTTPException(status_code=404, detail="Server not found")
     try:
+        image=None
         openstack_server = openstack.get_server(conn, str(server_id))
         if openstack_server.image.id:
             image = openstack.get_image(conn, openstack_server.image.id)

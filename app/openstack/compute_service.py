@@ -36,10 +36,10 @@ def create_server(
         flavor_id=flavor.id,
         networks=networks,
         key_name=keypair.name,
+        disk_config="AUTO",
     )
-    conn.compute.wait_for_server(server, interval=2)
+    conn.compute.wait_for_server(server)
     ip_address = network_service.create_floating_ip_and_assign_to_server(conn, server)
-    ip_address.floating_ip_address
     return server, keypair, ip_address
 
 def add_floating_ip_to_server(conn:connection.Connection, server: OpenStackServer, floating_ip: OpenstackFloatingIP):
