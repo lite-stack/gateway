@@ -9,7 +9,9 @@ from openstack.network.v2.floating_ip import FloatingIP as OpenstackFloatingIP
 
 import app.openstack.network_service as network_service
 from app.config import settings
+from app.openstack.block_service import create_volume, get_block_device_mapping
 from app.servers.models import ServerConfig
+
 
 def create_server(
         conn: connection.Connection,
@@ -18,6 +20,13 @@ def create_server(
         description: str,
         server_config: ServerConfig,
 ) -> (OpenStackServer, OpenStackKeypair, OpenstackFloatingIP):
+    block_device_mapping = []
+
+    # if image is not equal to cirros
+    if "cirros" not in server_config.image.split("-"):
+        volume = create_volume(conn, server_config.image, name + "_disk")
+        block_device_mapping.append(get_block_device_mapping(volume))
+
     image = conn.image.find_image(server_config.image)
     flavor = conn.compute.find_flavor(server_config.flavor)
 
@@ -36,14 +45,16 @@ def create_server(
         flavor_id=flavor.id,
         networks=networks,
         key_name=keypair.name,
-        disk_config="AUTO",
+        block_device_mapping_v2=block_device_mapping,
     )
     conn.compute.wait_for_server(server)
     ip_address = network_service.create_floating_ip_and_assign_to_server(conn, server)
     return server, keypair, ip_address
 
-def add_floating_ip_to_server(conn:connection.Connection, server: OpenStackServer, floating_ip: OpenstackFloatingIP):
+
+def add_floating_ip_to_server(conn: connection.Connection, server: OpenStackServer, floating_ip: OpenstackFloatingIP):
     conn.compute.add_floating_ip_to_server(server, floating_ip)
+
 
 def create_keypair(conn: connection.Connection, name) -> OpenStackKeypair:
     keypair = conn.compute.find_keypair(name)
@@ -52,6 +63,8 @@ def create_keypair(conn: connection.Connection, name) -> OpenStackKeypair:
         keypair = conn.compute.create_keypair(name=name)
 
     return keypair
+
+
 def create_floating_ip(conn: connection.Connection, network_id: str) -> OpenstackFloatingIP:
     return conn.network.create_ip(floating_network_id=network_id)
 
@@ -75,8 +88,10 @@ def get_servers_by_ids(conn: connection.Connection, ids: list[str]) -> list[Open
 def get_server(conn: connection.Connection, server_id: str) -> OpenStackServer:
     return conn.compute.find_server(server_id)
 
+
 def create_server_console(conn, server_id: str) -> dict[str]:
     return conn.compute.create_console(server_id, "novnc")
+
 
 def update_server(
         conn: connection.Connection,
@@ -129,7 +144,8 @@ def get_images(conn: connection.Connection) -> list[OpenStackImage]:
 def get_image(conn: connection.Connection, image_id: str) -> list[OpenStackImage]:
     return conn.compute.find_image(image_id)
 
+
 def get_instance_limit(conn: connection.Connection) -> int:
     limits = conn.compute.get_limits()
-    max_server_limit =limits.absolute['maxTotalInstances']
+    max_server_limit = limits.absolute['maxTotalInstances']
     return min(max_server_limit, settings.max_server_limit)

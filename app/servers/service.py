@@ -32,12 +32,12 @@ async def send_keypair_email(
     if not ip_address:
         return
 
-    private_file_path = generate_file(f'./temp/{user.id}_devstask', key_pair.private_key)
-    public_file_path = generate_file(f'./temp/{user.id}_devstask.pub', key_pair.public_key)
+    private_file_path = generate_file(f'./keys/{user.id}_devstask', key_pair.private_key)
+    public_file_path = generate_file(f'./keys/{user.id}_devstask.pub', key_pair.public_key)
 
     await send_email(
         background_tasks,
-        "LiteStack: your private ssh key",
+        "LiteStack: your private command key",
         user.email,
         {
             'public_address': ip_address,
@@ -72,6 +72,3 @@ async def send_keypair_email(
         ],
         "ssh_email.html",
     )
-
-    delete_file(private_file_path)
-    delete_file(public_file_path)

@@ -10,16 +10,27 @@ import app.openstack.compute_service as openstack
 import app.servers.db_service as db
 from app.auth.config import fastapi_users
 from app.auth.models import User
+from app.command.echo import EchoCommand
 from app.config import settings
 from app.dependencies import get_openstack_connection, get_async_session
+from app.command.command import ExecAction
+from app.command.grafana import GrafanaCommand
+from app.command.matplotlib import MatplotlibCommand
+from app.command.mongo import MongoCommand
+from app.command.postgres import PostgresCommand
+from app.command.pytorch import TorchCommand
+from app.command.tensorflow import TensorflowCommand
 from app.servers.schemas import (
     Server as ServerSchema,
     ServerDetailed as ServerDetailedSchema,
     ServerStateActionUpdate,
-    ServerStateActionEnum, ServerConfiguration, ServeCreate, ServeUpdate
+    ServerStateActionEnum, ServerConfiguration, ServeCreate, ServeUpdate, ServerCommand, ServerCommandEnum
 )
 from app.servers.service import send_keypair_email
-from app.openstack.models import get_os_default_user
+from app.openstack.models import get_os_default_user, get_server_public_ip
+from app.runner.service import CommandRunner
+from fastapi.concurrency import run_in_threadpool
+
 current_user = fastapi_users.current_user()
 
 router = APIRouter(
@@ -58,18 +69,103 @@ async def get_user_servers_list(
 ):
     try:
         if user.is_superuser:
-            server_ids = await db.get_all_servers_ids(session)
+            user_servers = await db.get_all_servers(session)
         else:
-            server_ids = await db.get_user_server_ids(user, session)
+            user_servers = await db.get_user_servers(user, session)
 
-        if len(server_ids) == 0:
+        if len(user_servers) == 0:
             return []
+        server_ids = [server.openstack_id for server in user_servers]
         servers = openstack.get_servers_by_ids(conn, server_ids)
+
+        user_server_map={str(server.openstack_id): server for server in user_servers}
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to list server: {e}")
 
-    return [ServerSchema.create_from_openstack_server(user.id, server) for server in servers]
+    return [ServerSchema.create_from_openstack_server(user.id, server, user_server_map.get(server.id, {})) for server in servers]
 
+
+@router.get("/instruments", response_model=list[ServerSchema])
+async def get_configurable_user_servers_list(
+        user: User = Depends(current_user),
+        conn: connection.Connection = Depends(get_openstack_connection),
+        session: AsyncSession = Depends(get_async_session)
+):
+    try:
+        if user.is_superuser:
+            user_servers = await db.get_all_servers(session)
+        else:
+            user_servers = await db.get_user_servers(user, session)
+
+        if len(user_servers) == 0:
+            return []
+
+        server_ids = []
+        for server in user_servers:
+            if 'cirros' not in server.image:
+                server_ids.append(server.openstack_id)
+
+        servers = openstack.get_servers_by_ids(conn, server_ids)
+
+        user_server_map={str(server.openstack_id): server for server in user_servers}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to list server: {e}")
+
+    return [ServerSchema.create_from_openstack_server(user.id, server, user_server_map.get(server.id, {})) for server in servers]
+
+@router.post("/{server_id}/command", status_code=200)
+async def run_command_on_server(
+        background_tasks: BackgroundTasks,
+        server_id: uuid.UUID,
+        server_command: ServerCommand,
+        user: User = Depends(current_user),
+        conn: connection.Connection = Depends(get_openstack_connection),
+        session: AsyncSession = Depends(get_async_session),
+):
+    try:
+        if not await db.is_user_server(server_id, user, session):
+            return HTTPException(status_code=404, detail="Server not found")
+
+        server = await db.get_user_server(user, str(server_id), session)
+        openstack_server = openstack.get_server(conn, str(server_id))
+        executor = None
+        match server_command.command:
+            case ServerCommandEnum.install_torch :
+                executor = TorchCommand(ExecAction.INSTALL)
+            case ServerCommandEnum.delete_torch:
+                executor = TorchCommand(ExecAction.DELETE)
+            case ServerCommandEnum.install_tensorflow:
+                executor = TensorflowCommand(ExecAction.INSTALL)
+            case ServerCommandEnum.delete_tensorflow:
+                executor = TensorflowCommand(ExecAction.DELETE)
+            case ServerCommandEnum.install_grafana:
+                executor = GrafanaCommand(ExecAction.INSTALL)
+            case ServerCommandEnum.delete_grafana:
+                executor = GrafanaCommand(ExecAction.DELETE)
+            case ServerCommandEnum.install_matplotlib:
+                executor = MatplotlibCommand(ExecAction.INSTALL)
+            case ServerCommandEnum.delete_matplotlib:
+                executor = MatplotlibCommand(ExecAction.DELETE)
+            case ServerCommandEnum.install_postgres:
+                executor = PostgresCommand(ExecAction.INSTALL)
+            case ServerCommandEnum.delete_postgres:
+                executor = PostgresCommand(ExecAction.DELETE)
+            case ServerCommandEnum.install_mongo:
+                executor = MongoCommand(ExecAction.INSTALL)
+            case ServerCommandEnum.delete_mongo:
+                executor = MongoCommand(ExecAction.DELETE)
+            case ServerCommandEnum.echo:
+                executor = EchoCommand()
+
+        if executor:
+            background_tasks.add_task(CommandRunner(server, executor, get_server_public_ip(openstack_server)).run)
+
+    except ResourceNotFound as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to run command: {e}")
 
 @router.get("/{server_id}", response_model=ServerDetailedSchema)
 async def get_user_server(
@@ -85,6 +181,7 @@ async def get_user_server(
         openstack_server = openstack.get_server(conn, str(server_id))
         if openstack_server.image.id:
             image = openstack.get_image(conn, openstack_server.image.id)
+        server = await db.get_user_server(user, str(server_id), session)
     except ResourceNotFound:
         raise HTTPException(status_code=404, detail=f"Server not found")
     except DuplicateResource:
@@ -94,7 +191,7 @@ async def get_user_server(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get server: {e}")
 
-    return ServerDetailedSchema.create_from_openstack_server(user.id, openstack_server, image)
+    return ServerDetailedSchema.create_from_openstack_server(user.id,server, openstack_server, image)
 
 @router.get("/{server_id}/console-url")
 async def get_user_server_console_url(
@@ -127,8 +224,8 @@ async def create_user_server(
         session: AsyncSession = Depends(get_async_session),
 ):
     try:
-        server_ids = await db.get_user_server_ids(user, session)
-        if len(server_ids) > openstack.get_instance_limit(conn):
+        servers = await db.get_user_servers(user, session)
+        if len(servers) > openstack.get_instance_limit(conn):
             raise HTTPException(status_code=409, detail="Too many servers")
 
         server_config = await db.get_server_configuration(req.configuration_name, session)
@@ -145,13 +242,14 @@ async def create_user_server(
         if key_pair.private_key and settings.mail_username != "" and public_ip_address != "":
             await send_keypair_email(background_tasks, user, key_pair, public_ip_address, get_os_default_user(server_config.image))
 
-        await db.insert_user_server(openstack_server.id, user.id, session)
+        await db.insert_user_server(openstack_server.id, user.id, server_config.image, session)
+        server = await db.get_user_server(user, str(openstack_server.id), session)
     except ResourceNotFound as e:
         raise HTTPException(status_code=404, detail=f"Resource not found: {e}")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to create server: {e}")
 
-    return ServerDetailedSchema.create_from_openstack_server(user.id, openstack_server)
+    return ServerDetailedSchema.create_from_openstack_server(user.id, server, openstack_server)
 
 
 @router.delete("/{server_id}", status_code=204)

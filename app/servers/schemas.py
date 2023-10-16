@@ -10,6 +10,8 @@ from openstack.compute.v2.server import Server as OpenStackServer
 from openstack.network.v2.network import Network as OpenStackNetwork
 from pydantic import BaseModel
 
+from app.servers.models import Server as ServerModel
+
 
 class Flavor(BaseModel):
     name: str
@@ -91,6 +93,8 @@ class Server(BaseModel):
     vm_state: str
     task_state: Optional[str] = ""
 
+    image_name: str
+
     launched_at: datetime.datetime
     terminated_at: Optional[datetime.datetime] = None
 
@@ -99,8 +103,11 @@ class Server(BaseModel):
     ip_v6_public: str = ""
     ip_v6_private: str = ""
 
+    image_name: str = ""
+    tags: Optional[list[str] ]= []
+
     @classmethod
-    def create_from_openstack_server(cls, user_id: uuid.UUID, openstack_server: OpenStackServer) -> 'Server':
+    def create_from_openstack_server(cls, user_id: uuid.UUID, openstack_server: OpenStackServer, server: ServerModel) -> 'Server':
         ip_v4_public = ""
         ip_v6_public = ""
         ip_v4_private = ""
@@ -143,6 +150,8 @@ class Server(BaseModel):
             ip_v6_public=ip_v6_public,
             ip_v4_private=ip_v4_private,
             ip_v6_private=ip_v6_private,
+            image_name=server.image,
+            tags=server.tags,
         )
 
 
@@ -163,10 +172,11 @@ class ServerDetailed(Server):
     def create_from_openstack_server(
             cls,
             user_id: uuid.UUID,
+            server: ServerModel,
             openstack_server: OpenStackServer,
             openstack_image: Optional[OpenStackImage] = None,
     ) -> 'ServerDetailed':
-        server = Server.create_from_openstack_server(user_id, openstack_server)
+        server = Server.create_from_openstack_server(user_id, openstack_server,server)
         image = None
         if openstack_image:
             image = Image.create_from_openstack(image=openstack_image)
@@ -213,3 +223,30 @@ class ServeCreate(BaseModel):
 class ServeUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
+
+
+class ServerCommandEnum(str, Enum):
+    install_torch = "install_torch"
+    delete_torch = "delete_torch"
+
+    install_tensorflow = "install_tensorflow"
+    delete_tensorflow = "delete_tensorflow"
+
+    install_grafana = "install_grafana"
+    delete_grafana = "delete_grafana"
+
+    install_matplotlib = "install_matplotlib"
+    delete_matplotlib = "delete_matplotlib"
+
+
+    install_postgres = "install_postgres"
+    delete_postgres = "delete_postgres"
+
+    install_mongo = "install_mongo"
+    delete_mongo = "delete_mongo"
+
+    echo = "echo"
+
+class ServerCommand(BaseModel):
+    command: ServerCommandEnum
+

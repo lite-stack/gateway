@@ -200,9 +200,37 @@ RABBIT_PASSWORD=openstack
 SERVICE_PASSWORD=openstack
 HOST_IP=<192.168.56.XXX>
 SERVICE_TIMEOUT=180
+
+enable_service s-proxy s-object s-container s-account
+
+SWIFT_HASH=66a3d6b56c1f479c8b4e70ab5c2000f5
+SWIFT_REPLICAS=1
+
+enable_service h-eng h-api h-api-cfn h-api-cw
+enable_plugin heat https://opendev.org/openstack/heat
+
+FLOATING_RANGE=192.168.56.224/27
+FLAT_INTERFACE=enp0s8
 ```
 
 2. Instead of `<192.168.56.XXX> ` at the file `local.conf` add your IP address. To do that, write in the VM `ip addr`,
    find and use your ip with the prefix of `192.168.56.`.
 3. Name all users and set all passwords as `openstack`.
 4. Update `clouds.yml` file with your IP address, start the app and try to call `/servers/list` from the doc.
+5. Add rules to openstack server to allow ping and ssh-connection:
+```console
+openstack security group rule create --proto icmp --dst-port 0 default
+openstack security group rule create --proto tcp --dst-port 22 default
+```
+6. Run code to allow IP-forwarding:
+```console
+sudo bash
+echo 1 > /proc/sys/net/ipv4/ip_forward
+echo 1 > /proc/sys/net/ipv4/conf/enp0s8/proxy_arp
+iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE 
+```
+7. Enable DHCP:
+```console
+openstack subnet set --dhcp private-subnet
+openstack subnet set --dns-nameserver 8.8.8.8 private-subnet
+```
